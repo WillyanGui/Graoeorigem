@@ -54,6 +54,30 @@ npm run dev:api
 
 Em caminhos Windows com `&` no nome da pasta, `npm run` pode falhar pelo wrapper do `cmd`. Nesse caso, prefira Docker ou execute o binario diretamente.
 
+## Publicar em uma VPS
+
+A configuracao de producao usa Caddy para HTTPS automatico, Nginx para o frontend, API Node.js e PostgreSQL privado na rede Docker.
+
+1. Copie `.env.production.example` para `.env.production` e substitua todos os valores de exemplo por segredos fortes.
+2. Aponte o registro DNS `A` do dominio para o IPv4 publico da VPS.
+3. Libere somente as portas `22`, `80` e `443` no firewall.
+4. Suba os servicos:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
+
+Para verificar a publicacao:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=100
+curl -I https://comprarcafe.com.br
+curl https://comprarcafe.com.br/health
+```
+
+O ambiente nasce com frete e pagamento em modo `mock`. Ative Melhor Envio e Asaas somente depois de cadastrar as credenciais de sandbox ou producao correspondentes.
+
 ## Produto
 
 O plano de evolucao esta em [docs/saas-roadmap.md](docs/saas-roadmap.md).
@@ -64,12 +88,14 @@ O plano tecnico para frete com Melhor Envio e pagamentos/repasses com Asaas em s
 
 O painel administrativo fica acessivel pelo botao `Admin` no menu da loja.
 
-Credenciais iniciais do tenant `grao-origem`:
+Credenciais locais de desenvolvimento do tenant `grao-origem`:
 
 ```txt
 Usuario: grãoecafe
 Senha: 123
 ```
+
+Em producao, `ADMIN_USERNAME`, `ADMIN_EMAIL` e `ADMIN_PASSWORD` sao obrigatorios no arquivo `.env.production`; o fallback local e desativado no build de producao.
 
 Quando a API estiver ativa, o login usa `/api/auth/login` e salva um token local. Se a API estiver desligada, a tela usa um fallback local apenas para desenvolvimento.
 

@@ -6,7 +6,13 @@ import { signToken, verifyPassword, verifyToken } from './security';
 const fallbackJwtSecret = 'grao-origem-local-dev-secret';
 
 export function jwtSecret() {
-  return process.env.JWT_SECRET ?? fallbackJwtSecret;
+  const configuredSecret = process.env.JWT_SECRET?.trim();
+
+  if (!configuredSecret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is required in production.');
+  }
+
+  return configuredSecret ?? fallbackJwtSecret;
 }
 
 export async function loginHandler(req: Request, res: Response) {

@@ -2,8 +2,7 @@ node_modules
 dist
 coverage
 .git
-.env
-.env.local
+.env*
 *.log
 Dockerfile*
 docker-compose*.yml

@@ -173,6 +173,7 @@ const adminSessionKey = 'grao_origem_admin_session';
 const adminTokenKey = 'grao_origem_admin_token';
 const adminUsername = 'grãoecafe';
 const adminPassword = '123';
+const allowLocalAdminFallback = import.meta.env.DEV;
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
@@ -366,7 +367,8 @@ const productFilterItems: Array<{ id: ProductFilter; label: string }> = [
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem(adminSessionKey) === 'authenticated' || Boolean(localStorage.getItem(adminTokenKey));
+    return Boolean(localStorage.getItem(adminTokenKey))
+      || (allowLocalAdminFallback && localStorage.getItem(adminSessionKey) === 'authenticated');
   });
   const [login, setLogin] = useState({
     username: '',
@@ -802,7 +804,7 @@ export default function AdminPage() {
       // Fallback local para desenvolvimento quando a API/Docker ainda nao estiverem ativos.
     }
 
-    if (login.username.trim() === adminUsername && login.password === adminPassword) {
+    if (allowLocalAdminFallback && login.username.trim() === adminUsername && login.password === adminPassword) {
       localStorage.setItem(adminSessionKey, 'authenticated');
       setIsAuthenticated(true);
       setLoginError('');

@@ -10,6 +10,20 @@ const prisma = new PrismaClient();
 
 const toCents = (value: number) => Math.round(value * 100);
 
+function deploymentValue(name: string, developmentFallback: string) {
+  const value = process.env[name]?.trim();
+
+  if (value) {
+    return value;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`${name} is required when seeding production.`);
+  }
+
+  return developmentFallback;
+}
+
 const slugify = (value: string) =>
   value
     .normalize('NFD')
@@ -19,6 +33,10 @@ const slugify = (value: string) =>
     .replace(/(^-|-$)+/g, '');
 
 async function main() {
+  const adminUsername = deploymentValue('ADMIN_USERNAME', 'grãoecafe');
+  const adminEmail = deploymentValue('ADMIN_EMAIL', 'admin@grao-origem.local');
+  const adminPassword = deploymentValue('ADMIN_PASSWORD', '123');
+
   const starterPlan = await prisma.saaSPlan.upsert({
     where: { slug: 'starter' },
     update: {},
@@ -72,10 +90,10 @@ async function main() {
       users: {
         create: {
           name: 'Administrador',
-          username: 'grãoecafe',
-          email: 'admin@grao-origem.local',
+          username: adminUsername,
+          email: adminEmail,
           role: 'OWNER',
-          passwordHash: hashPassword('123', 'grao-origem-admin-seed'),
+          passwordHash: hashPassword(adminPassword),
         },
       },
       saasSubscription: {
@@ -92,22 +110,22 @@ async function main() {
     where: {
       tenantId_username: {
         tenantId: tenant.id,
-        username: 'grãoecafe',
+        username: adminUsername,
       },
     },
     update: {
       name: 'Administrador',
-      email: 'admin@grao-origem.local',
+      email: adminEmail,
       role: 'OWNER',
-      passwordHash: hashPassword('123', 'grao-origem-admin-seed'),
+      passwordHash: hashPassword(adminPassword),
     },
     create: {
       tenantId: tenant.id,
       name: 'Administrador',
-      username: 'grãoecafe',
-      email: 'admin@grao-origem.local',
+      username: adminUsername,
+      email: adminEmail,
       role: 'OWNER',
-      passwordHash: hashPassword('123', 'grao-origem-admin-seed'),
+      passwordHash: hashPassword(adminPassword),
     },
   });
 
