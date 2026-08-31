@@ -1,0 +1,6 @@
+{
+  "name": "Grão & Origem",
+  "description": "Plataforma de curadoria e revenda de cafés selecionados, conectando apaixonados a grãos tradicionais e especiais dos melhores produtores do Brasil.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

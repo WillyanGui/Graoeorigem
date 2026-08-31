@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Custom palette */
+  --color-brand-brown-950: #120907; /* Ultra dark coffee */
+  --color-brand-brown-900: #1C0F0B; /* Dark coffee ground */
+  --color-brand-brown-850: #24130E; /* Dark roast */
+  --color-brand-brown-800: #2B1710; /* Dark chocolate coffee */
+  --color-brand-brown-750: #3D2218; /* Medium roasted bean */
+  --color-brand-brown-700: #42251B; /* Toasted bean */
+  --color-brand-brown-600: #5D3A2E; /* Rich robusta */
+  --color-brand-amber-500: #8C533C; /* Roasted caramel */
+  --color-brand-amber-400: #B37D64; /* Soft cinnamon */
+  --color-brand-gold: #C5A059;      /* Subtle organic gold */
+  --color-brand-gold-light: #F2EADA; /* Pale cream-gold */
+  --color-brand-cream-deep: #FAF6F0; /* Off-white warm background */
+  --color-brand-cream-light: #FCFAF7; /* Clean canvas white */
+  --color-brand-beige: #EFDFCF;       /* Nutty beige */
+  --color-brand-green-900: #103322;   /* Dark forest leaf */
+  --color-brand-green-700: #1E4620;   /* Fresh coffee leaf */
+  --color-brand-green-600: #306B34;   /* Fresh plant */
+  --color-brand-olive: #5B7053;       /* Earthy olive */
+}
+
+/* Base resets & layouts */
+html, body {
+  background-color: var(--color-brand-cream-light);
+  color: var(--color-brand-brown-900);
+  font-family: var(--font-sans);
+  scroll-behavior: smooth;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, .font-serif {
+  font-family: var(--font-serif);
+}
+
+/* Custom classes for coffee detailing */
+.bg-coffee-glow {
+  background: radial-gradient(circle, rgba(239, 223, 207, 0.3) 0%, rgba(252, 250, 247, 0) 70%);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

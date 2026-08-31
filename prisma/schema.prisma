@@ -1,0 +1,816 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  SUPPORT
+}
+
+enum ProductType {
+  COFFEE
+  EQUIPMENT
+  KIT
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CoffeeCategory {
+  TRADITIONAL
+  SPECIALTY
+}
+
+enum OrderStatus {
+  DRAFT
+  PLACED
+  PAYMENT_PENDING
+  PAID
+  FULFILLMENT_PENDING
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  RISK_ANALYSIS
+  CONFIRMED
+  RECEIVED
+  MANUAL_REVIEW
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUND_IN_PROGRESS
+  REFUNDED
+  CHARGEBACK
+  CANCELED
+}
+
+enum PaymentProvider {
+  PENDING
+  MOCK
+  MANUAL
+  ASAAS
+  MERCADO_PAGO
+  PAGARME
+  STRIPE
+}
+
+enum PaymentBillingType {
+  PIX
+  CREDIT_CARD
+}
+
+enum ShippingProvider {
+  MELHOR_ENVIO
+}
+
+enum ShippingQuoteLabel {
+  ECONOMIC
+  FAST
+  RECOMMENDED
+}
+
+enum SellerOrderStatus {
+  AWAITING_PAYMENT
+  PAID
+  PREPARING
+  READY_FOR_LABEL
+  LABEL_CREATED
+  LABEL_PAID
+  LABEL_GENERATED
+  AWAITING_POSTING
+  POSTED
+  IN_TRANSIT
+  DELIVERED
+  UNDELIVERED
+  PAUSED
+  SUSPENDED
+  LABEL_EXPIRED
+  CANCELED
+}
+
+enum ShipmentStatus {
+  QUOTED
+  LABEL_CREATED
+  LABEL_PAID
+  LABEL_GENERATED
+  AWAITING_POSTING
+  POSTED
+  IN_TRANSIT
+  DELIVERED
+  UNDELIVERED
+  PAUSED
+  SUSPENDED
+  EXPIRED
+  CANCELED
+}
+
+enum SellerPayableStatus {
+  PENDING
+  ELIGIBLE
+  BLOCKED
+  PAID
+  CANCELED
+}
+
+enum PayoutProvider {
+  MANUAL
+  ASAAS
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELED
+}
+
+enum LedgerEntryType {
+  CUSTOMER_PAYMENT_GROSS
+  PAYMENT_PROCESSOR_FEE
+  PRODUCT_GROSS
+  SELLER_PAYABLE
+  PLATFORM_COMMISSION
+  SHIPPING_COLLECTED
+  SHIPPING_PURCHASED
+  SHIPPING_VARIANCE
+  SELLER_PAYOUT
+  REFUND
+  CHARGEBACK
+  ADJUSTMENT
+}
+
+enum WebhookProvider {
+  MELHOR_ENVIO
+  ASAAS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  PAYMENT_PENDING
+  CANCELED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+model Tenant {
+  id                        String                     @id @default(cuid())
+  slug                      String                     @unique
+  name                      String
+  displayName               String
+  segment                   String
+  status                    TenantStatus               @default(TRIAL)
+  defaultCurrency           String                     @default("BRL")
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  users                     User[]
+  customers                 Customer[]
+  products                  Product[]
+  producers                 Producer[]
+  blogPosts                 BlogPost[]
+  orders                    Order[]
+  payments                  Payment[]
+  paymentCustomerProfiles   PaymentCustomerProfile[]
+  producerLogisticsProfiles ProducerLogisticsProfile[]
+  packagingTemplates        PackagingTemplate[]
+  productShippingProfiles   ProductShippingProfile[]
+  sellerOrders              SellerOrder[]
+  shippingQuotes            ShippingQuote[]
+  shipments                 Shipment[]
+  shippingWebhookEvents     ShippingWebhookEvent[]
+  paymentWebhookEvents      PaymentWebhookEvent[]
+  producerPaymentProfiles   ProducerPaymentProfile[]
+  sellerPayables            SellerPayable[]
+  payouts                   Payout[]
+  ledgerEntries             LedgerEntry[]
+  themeSettings             ThemeSettings?
+  saasSubscription          TenantSaaSSubscription?
+}
+
+model User {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  username        String?
+  email           String
+  role            UserRole @default(OWNER)
+  passwordHash    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recordedPayouts Payout[]
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, username])
+  @@index([tenantId])
+}
+
+model Customer {
+  id            String                 @id @default(cuid())
+  tenantId      String
+  name          String
+  email         String?
+  phone         String?
+  document      String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders        Order[]
+  subscriptions CustomerSubscription[]
+  paymentProfiles PaymentCustomerProfile[]
+
+  @@index([tenantId])
+  @@index([tenantId, email])
+}
+
+model Product {
+  id                String                  @id @default(cuid())
+  tenantId          String
+  producerId        String?
+  legacyId          Int?
+  type              ProductType
+  status            ProductStatus           @default(ACTIVE)
+  name              String
+  slug              String
+  description       String
+  descriptionLong   String
+  priceCents        Int
+  image             String
+  stockQuantity     Int                     @default(0)
+  metadata          Json?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  producer          Producer?               @relation(fields: [producerId], references: [id], onDelete: SetNull)
+  coffeeProfile     CoffeeProfile?
+  equipmentProfile  EquipmentProfile?
+  kitProfile        KitProfile?
+  orderItems        OrderItem[]
+  subscriptionItems CustomerSubscription[]
+  shippingProfile   ProductShippingProfile?
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, type])
+  @@index([tenantId, producerId])
+}
+
+model CoffeeProfile {
+  id               String         @id @default(cuid())
+  productId        String         @unique
+  tenantId         String
+  category         CoffeeCategory
+  aroma            String
+  flavor           String
+  acidity          String
+  body             String
+  notes            String[]
+  producerName     String
+  farm             String
+  harvest          String
+  location         String
+  process          String
+  variety          String
+  altitude         String
+  score            Decimal?       @db.Decimal(4, 1)
+  sommelierComment String
+  farmImages       String[]
+  product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, category])
+}
+
+model EquipmentProfile {
+  id        String   @id @default(cuid())
+  productId String   @unique
+  tenantId  String
+  specs     String[]
+  objective String
+  howToUse  String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model KitProfile {
+  id            String   @id @default(cuid())
+  productId     String   @unique
+  tenantId      String
+  itemsIncluded String[]
+  objective     String
+  howToUse      String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model Producer {
+  id               String                    @id @default(cuid())
+  tenantId         String
+  legacyId         Int?
+  name             String
+  location         String
+  farm             String
+  specialty        String
+  history          String
+  image            String
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products         Product[]
+  logisticsProfile ProducerLogisticsProfile?
+  paymentProfiles  ProducerPaymentProfile[]
+  sellerOrders     SellerOrder[]
+  shippingQuotes   ShippingQuote[]
+  sellerPayables   SellerPayable[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model BlogPost {
+  id        String   @id @default(cuid())
+  tenantId  String
+  legacyId  Int?
+  title     String
+  slug      String
+  excerpt   String
+  content   String
+  dateLabel String
+  readTime  String
+  category  String
+  image     String
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, published])
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  tenantId        String
+  customerId      String?
+  code            String
+  status          OrderStatus   @default(PAYMENT_PENDING)
+  subtotalCents   Int
+  shippingCents   Int           @default(0)
+  discountCents   Int           @default(0)
+  totalCents      Int
+  notes           String?
+  shippingAddress Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+  payments        Payment[]
+  sellerOrders    SellerOrder[]
+  ledgerEntries   LedgerEntry[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+}
+
+model OrderItem {
+  id             String       @id @default(cuid())
+  orderId        String
+  sellerOrderId  String?
+  productId      String?
+  name           String
+  productType    ProductType
+  quantity       Int
+  unitPriceCents Int
+  totalCents     Int
+  metadata       Json?
+  order          Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sellerOrder    SellerOrder? @relation(fields: [sellerOrderId], references: [id], onDelete: SetNull)
+  product        Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([sellerOrderId])
+}
+
+model Payment {
+  id                String                @id @default(cuid())
+  tenantId          String
+  orderId           String?
+  provider          PaymentProvider       @default(PENDING)
+  status            PaymentStatus         @default(PENDING)
+  amountCents       Int
+  billingType       PaymentBillingType?
+  providerPaymentId String?
+  netAmountCents    Int?
+  feeAmountCents    Int?
+  currency          String                @default("BRL")
+  transactionId     String?
+  confirmedAt       DateTime?
+  receivedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order             Order?                @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  webhookEvents     PaymentWebhookEvent[]
+  ledgerEntries     LedgerEntry[]
+
+  @@unique([provider, providerPaymentId])
+  @@index([tenantId, status])
+}
+
+model PaymentCustomerProfile {
+  id                 String          @id @default(cuid())
+  tenantId           String
+  customerId         String
+  provider           PaymentProvider
+  providerCustomerId String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  tenant             Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer           Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, provider])
+  @@unique([provider, providerCustomerId])
+  @@index([tenantId, provider])
+}
+
+model ProducerLogisticsProfile {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  producerId          String   @unique
+  country             String   @default("BR")
+  postalCode          String
+  state               String
+  city                String
+  district            String
+  street              String
+  number              String
+  complement          String?
+  postingDays         Int[]
+  cutoffTime          String
+  preparationDays     Int      @default(2)
+  acceptedServiceIds  Int[]
+  printCapability     Boolean  @default(false)
+  defaultDropoffPoint Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  producer            Producer @relation(fields: [producerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model PackagingTemplate {
+  id               String                   @id @default(cuid())
+  tenantId         String
+  code             String
+  name             String
+  lengthCm         Int
+  widthCm          Int
+  heightCm         Int
+  emptyWeightGrams Int
+  maxWeightGrams   Int
+  material         String
+  active           Boolean                  @default(true)
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  tenant           Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productProfiles  ProductShippingProfile[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, active])
+}
+
+model ProductShippingProfile {
+  id                         String             @id @default(cuid())
+  tenantId                   String
+  productId                  String             @unique
+  defaultPackagingTemplateId String?
+  unitWeightGrams            Int
+  lengthCm                   Int
+  widthCm                    Int
+  heightCm                   Int
+  unitsPerPackage            Int                @default(1)
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
+  tenant                     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product                    Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  defaultPackagingTemplate   PackagingTemplate? @relation(fields: [defaultPackagingTemplateId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([defaultPackagingTemplateId])
+}
+
+model SellerOrder {
+  id               String            @id @default(cuid())
+  tenantId         String
+  orderId          String
+  producerId       String
+  code             String
+  status           SellerOrderStatus @default(AWAITING_PAYMENT)
+  subtotalCents    Int
+  shippingCents    Int               @default(0)
+  discountCents    Int               @default(0)
+  totalCents       Int
+  payoutEligibleAt DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  producer         Producer          @relation(fields: [producerId], references: [id], onDelete: Restrict)
+  items            OrderItem[]
+  shippingQuotes   ShippingQuote[]
+  shipments        Shipment[]
+  sellerPayable    SellerPayable?
+  ledgerEntries    LedgerEntry[]
+
+  @@unique([orderId, producerId])
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@index([producerId, status])
+}
+
+model ShippingQuote {
+  id                    String             @id @default(cuid())
+  tenantId              String
+  sellerOrderId         String?
+  producerId            String
+  provider              ShippingProvider   @default(MELHOR_ENVIO)
+  serviceId             String
+  carrier               String
+  serviceName           String
+  label                 ShippingQuoteLabel
+  priceCents            Int
+  deliveryDays          Int
+  totalPromiseDays      Int
+  destinationPostalCode String
+  itemsHash             String
+  packages              Json
+  rawResponse           Json?
+  expiresAt             DateTime
+  createdAt             DateTime           @default(now())
+  tenant                Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sellerOrder           SellerOrder?       @relation(fields: [sellerOrderId], references: [id], onDelete: SetNull)
+  producer              Producer           @relation(fields: [producerId], references: [id], onDelete: Cascade)
+  shipments             Shipment[]
+
+  @@index([tenantId, producerId, expiresAt])
+  @@index([sellerOrderId])
+}
+
+model Shipment {
+  id              String           @id @default(cuid())
+  tenantId        String
+  sellerOrderId   String
+  quoteId         String?
+  provider        ShippingProvider @default(MELHOR_ENVIO)
+  providerOrderId String?
+  labelUrl        String?
+  trackingCode    String?
+  quotedCostCents Int
+  finalCostCents  Int?
+  status          ShipmentStatus   @default(QUOTED)
+  postedAt        DateTime?
+  deliveredAt     DateTime?
+  rawData         Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sellerOrder     SellerOrder      @relation(fields: [sellerOrderId], references: [id], onDelete: Cascade)
+  quote           ShippingQuote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerOrderId])
+  @@index([tenantId, status])
+  @@index([sellerOrderId])
+  @@index([trackingCode])
+}
+
+model ShippingWebhookEvent {
+  id               String          @id @default(cuid())
+  tenantId         String?
+  provider         WebhookProvider @default(MELHOR_ENVIO)
+  deduplicationKey String
+  eventType        String
+  providerOrderId  String?
+  signatureValid   Boolean
+  payloadHash      String
+  payload          Json
+  receivedAt       DateTime        @default(now())
+  processedAt      DateTime?
+  processingError  String?
+  tenant           Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, deduplicationKey])
+  @@index([providerOrderId])
+  @@index([tenantId, processedAt])
+}
+
+model PaymentWebhookEvent {
+  id                String          @id @default(cuid())
+  tenantId          String?
+  paymentId         String?
+  provider          WebhookProvider @default(ASAAS)
+  eventId           String
+  eventType         String
+  providerPaymentId String?
+  tokenValid        Boolean
+  payloadHash       String
+  payload           Json
+  receivedAt        DateTime        @default(now())
+  processedAt       DateTime?
+  processingError   String?
+  tenant            Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  payment           Payment?        @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, eventId])
+  @@index([providerPaymentId])
+  @@index([tenantId, processedAt])
+}
+
+model ProducerPaymentProfile {
+  id              String    @id @default(cuid())
+  tenantId        String
+  producerId      String
+  pixKeyEncrypted String
+  keyType         String
+  holderName      String
+  holderDocument  String
+  verifiedAt      DateTime?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  producer        Producer  @relation(fields: [producerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, producerId, active])
+}
+
+model SellerPayable {
+  id                   String              @id @default(cuid())
+  tenantId             String
+  sellerOrderId        String              @unique
+  producerId           String
+  productSubtotalCents Int
+  commissionCents      Int
+  adjustmentsCents     Int                 @default(0)
+  payableValueCents    Int
+  status               SellerPayableStatus @default(PENDING)
+  eligibleAt           DateTime?
+  paidAt               DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sellerOrder          SellerOrder         @relation(fields: [sellerOrderId], references: [id], onDelete: Cascade)
+  producer             Producer            @relation(fields: [producerId], references: [id], onDelete: Restrict)
+  payouts              Payout[]
+
+  @@index([tenantId, status])
+  @@index([producerId, status])
+}
+
+model Payout {
+  id                 String         @id @default(cuid())
+  tenantId           String
+  sellerPayableId    String
+  recordedByUserId   String?
+  provider           PayoutProvider @default(MANUAL)
+  status             PayoutStatus   @default(PENDING)
+  amountCents        Int
+  pixKeyMasked       String
+  recipientDocument  String
+  providerTransferId String?
+  proofUrl           String?
+  externalReference  String
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  tenant             Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sellerPayable      SellerPayable  @relation(fields: [sellerPayableId], references: [id], onDelete: Restrict)
+  recordedByUser     User?          @relation(fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, externalReference])
+  @@index([tenantId, status])
+  @@index([sellerPayableId])
+}
+
+model LedgerEntry {
+  id            String          @id @default(cuid())
+  tenantId      String
+  orderId       String
+  sellerOrderId String?
+  paymentId     String?
+  type          LedgerEntryType
+  debitCents    Int             @default(0)
+  creditCents   Int             @default(0)
+  currency      String          @default("BRL")
+  reference     String
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sellerOrder   SellerOrder?    @relation(fields: [sellerOrderId], references: [id], onDelete: SetNull)
+  payment       Payment?        @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([orderId])
+  @@index([sellerOrderId])
+}
+
+model CustomerSubscription {
+  id              String             @id @default(cuid())
+  tenantId        String
+  customerId      String
+  productId       String?
+  status          SubscriptionStatus @default(PAYMENT_PENDING)
+  frequency       String             @default("monthly")
+  nextBillingDate DateTime?
+  preferences     Json?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  customer        Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product         Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+}
+
+model SaaSPlan {
+  id            String                   @id @default(cuid())
+  slug          String                   @unique
+  name          String
+  description   String
+  priceCents    Int
+  billingCycle  BillingCycle             @default(MONTHLY)
+  productLimit  Int
+  orderLimit    Int
+  userLimit     Int
+  features      String[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  subscriptions TenantSaaSSubscription[]
+}
+
+model TenantSaaSSubscription {
+  id                 String             @id @default(cuid())
+  tenantId           String             @unique
+  planId             String
+  status             SubscriptionStatus @default(PAYMENT_PENDING)
+  paymentStatus      PaymentStatus      @default(PENDING)
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan               SaaSPlan           @relation(fields: [planId], references: [id])
+}
+
+model Coupon {
+  id              String    @id @default(cuid())
+  tenantId        String
+  code            String
+  discountPercent Int?
+  discountCents   Int?
+  active          Boolean   @default(true)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@unique([tenantId, code])
+  @@index([tenantId, active])
+}
+
+model ThemeSettings {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  logoUrl         String?
+  primaryColor    String   @default("#24130E")
+  accentColor     String   @default("#C5A059")
+  backgroundColor String   @default("#FCFAF7")
+  surfaceColor    String   @default("#FAF6F0")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
